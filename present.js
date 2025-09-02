@@ -7,7 +7,7 @@ import open from "open";
 
 const args = process.argv.slice(2);
 if (args.length < 1) {
-  console.error("Usage: node present.mjs <slides.md> [--port 8000] [--theme black]");
+  console.error("Usage: node present.js <slides.md> [--port 8000] [--theme=black] [--no-uppercase] [--show-notes]");
   process.exit(1);
 }
 const mdPath = path.resolve(args[0]);
@@ -17,6 +17,8 @@ if (!fs.existsSync(mdPath) || !fs.statSync(mdPath).isFile()) {
 }
 const portArg = args.find(a => a.startsWith("--port"));
 const themeArg = args.find(a => a.startsWith("--theme"));
+const noUppercaseHeadings = args.includes("--no-uppercase");
+const showSpeakerNotes = args.includes("--show-notes");
 const port = portArg ? Number(portArg.split(" ")[1] || portArg.split("=")[1]) : 8000;
 const theme = themeArg ? (themeArg.split(" ")[1] || themeArg.split("=")[1]) : "black";
 
@@ -24,6 +26,23 @@ const app = express();
 const require = createRequire(import.meta.url);
 const revealPkg = require.resolve("reveal.js/package.json");
 const revealRoot = path.dirname(revealPkg);
+// Verify theme CSS exists; if not, print available themes and exit
+const themeCssPath = path.join(revealRoot, "dist", "theme", `${theme}.css`);
+if (!fs.existsSync(themeCssPath)) {
+  const themeDir = path.join(revealRoot, "dist", "theme");
+  let available = [];
+  try {
+    available = fs
+      .readdirSync(themeDir, { withFileTypes: true })
+      .filter((e) => e.isFile() && e.name.endsWith(".css"))
+      .map((e) => path.basename(e.name, ".css"))
+      .sort();
+  } catch {}
+  console.error(
+    `Theme not found: ${theme}. Available themes: ${available.join(", ")}`
+  );
+  process.exit(1);
+}
 const slidesDir = path.dirname(mdPath);
 
 app.use("/reveal.js", express.static(revealRoot));
@@ -35,6 +54,9 @@ app.get("/slides", (_req, res) => {
 });
 
 app.get("/", (_req, res) => {
+  const headingOverrideCss = noUppercaseHeadings
+    ? `.reveal h1, .reveal h2, .reveal h3, .reveal h4, .reveal h5, .reveal h6 { text-transform: none !important; letter-spacing: normal !important; }`
+    : "";
   const html = `<!doctype html>
 <html>
 <head>
@@ -45,6 +67,8 @@ app.get("/", (_req, res) => {
 <link rel="stylesheet" href="/reveal.js/dist/theme/${theme}.css" id="theme">
 <style>
   html, body, .reveal { height:100%; }
+  :root { --r-main-font-size: 34px; --r-heading1-size: 2.5em; --r-heading2-size: 1.8em; --r-block-margin: 16px; }
+  ${headingOverrideCss}
 </style>
 </head>
 <body>
@@ -61,7 +85,17 @@ app.get("/", (_req, res) => {
 <script src="/reveal.js/plugin/markdown/markdown.js"></script>
 <script src="/reveal.js/plugin/notes/notes.js"></script>
 <script>
-  Reveal.initialize({ hash: true, plugins: [ RevealMarkdown, RevealNotes ] });
+  Reveal.initialize({ 
+    hash: true,
+    plugins: [ RevealMarkdown, RevealNotes ],
+    width: 1280,          // logical slide size
+    height: 720,          // 16:9
+    margin: 0.06,         // whitespace around slide
+    minScale: 0.2,        // avoid tiny screens shrinking too much
+    maxScale: 1.0,        // CAP UPSCALING to keep fonts reasonable
+    center: true,         // top-align to free more space for content
+    showNotes: ${showSpeakerNotes}
+  });
 </script>
 </body>
 </html>`;
