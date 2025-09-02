@@ -6,22 +6,63 @@ import { createRequire } from "node:module";
 import express from "express";
 import open from "open";
 
-const args = process.argv.slice(2);
-if (args.length < 1) {
-  console.error("Usage: node present.js <slides.md> [--port 8000] [--theme=black] [--no-uppercase] [--show-notes]");
+// Parse CLI arguments supporting both --key=value and --key value
+const argv = process.argv.slice(2);
+let mdPathArg = null;
+let port = 8000;
+let theme = "black";
+let noUppercaseHeadings = false;
+let showSpeakerNotes = false;
+
+for (let i = 0; i < argv.length; i++) {
+  const tok = argv[i];
+  if (tok === "--") continue; // ignore a standalone separator
+  if (tok === "--no-uppercase") { noUppercaseHeadings = true; continue; }
+  if (tok === "--show-notes") { showSpeakerNotes = true; continue; }
+  if (tok.startsWith("--port")) {
+    let val = null;
+    if (tok.includes("=")) val = tok.split("=")[1];
+    else if (i + 1 < argv.length && !argv[i + 1].startsWith("-")) { val = argv[++i]; }
+    if (val == null || val === "") {
+      console.error("Missing value for --port. Use --port 8000 or --port=8000");
+      process.exit(1);
+    }
+    const n = Number(val);
+    if (!Number.isInteger(n) || n <= 0 || n > 65535) {
+      console.error("Invalid port:", val);
+      process.exit(1);
+    }
+    port = n;
+    continue;
+  }
+  if (tok.startsWith("--theme")) {
+    let val = null;
+    if (tok.includes("=")) val = tok.split("=")[1];
+    else if (i + 1 < argv.length && !argv[i + 1].startsWith("-")) { val = argv[++i]; }
+    if (val == null || val === "") {
+      console.error("Missing value for --theme. Use --theme black or --theme=black");
+      process.exit(1);
+    }
+    theme = val;
+    continue;
+  }
+  // First non-option token is the markdown path
+  if (!tok.startsWith("-") && mdPathArg === null) {
+    mdPathArg = tok;
+    continue;
+  }
+}
+
+if (!mdPathArg) {
+  console.error("Usage: node present.js <slides.md> [--port 8000|--port=8000] [--theme black|--theme=black] [--no-uppercase] [--show-notes]");
   process.exit(1);
 }
-const mdPath = path.resolve(args[0]);
+
+const mdPath = path.resolve(mdPathArg);
 if (!fs.existsSync(mdPath) || !fs.statSync(mdPath).isFile()) {
   console.error("Markdown file not found:", mdPath);
   process.exit(1);
 }
-const portArg = args.find(a => a.startsWith("--port"));
-const themeArg = args.find(a => a.startsWith("--theme"));
-const noUppercaseHeadings = args.includes("--no-uppercase");
-const showSpeakerNotes = args.includes("--show-notes");
-const port = portArg ? Number(portArg.split(" ")[1] || portArg.split("=")[1]) : 8000;
-const theme = themeArg ? (themeArg.split(" ")[1] || themeArg.split("=")[1]) : "black";
 
 const app = express();
 const require = createRequire(import.meta.url);

@@ -4,6 +4,7 @@ A tiny local presenter that serves a Markdown file as a Reveal.js slide deck wit
 
 ## Requirements
 - Node.js 18 or newer
+- npm 7 or newer
 - A Markdown file with slide separators (see below)
 
 ## Install
@@ -38,10 +39,10 @@ chmod +x present.js
 
 ## Command Reference
 ```
-node present.js <slides.md> [--port 8000] [--theme=black] [--no-uppercase] [--show-notes]
+node present.js <slides.md> [--port 8000|--port=8000] [--theme black|--theme=black] [--no-uppercase] [--show-notes]
 ```
 - `--port <number>`: Port to run the local server (default `8000`). Both `--port=8000` and `--port 8000` are supported.
-- `--theme <name>`: Reveal.js theme name (default `black`). The script validates that `reveal.js/dist/theme/<name>.css` exists and fails with a helpful list if not found.
+- `--theme <name>`: Reveal.js theme name (default `black`). Supports both `--theme=black` and `--theme black`. The script validates that `reveal.js/dist/theme/<name>.css` exists and fails with a helpful list if not found.
 - `--no-uppercase`: Do not force uppercase headings; keeps your original Markdown casing.
 - `--show-notes`: Show speaker notes on the slide deck. By default notes are hidden; you can still open the separate speaker console with the `s` shortcut.
 
