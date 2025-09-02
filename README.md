@@ -15,7 +15,7 @@ npm install
 
 Recommended (no install):
 ```
-npx github:dpolivaev/reveal-presenter -- path/to/slides.md [flags]
+npx github:dpolivaev/reveal-presenter path/to/slides.md [flags]
 ```
 - Fetches and runs from GitHub via npx
 - Opens `http://localhost:8000/` in your default browser
